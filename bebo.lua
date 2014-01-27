@@ -1,0 +1,4 @@
+--  TODO: write stuff
+-- eg: we need to check if we are on archive.bebo.com and if so,
+-- only download MemberId=123456[^0-9] aka make sure MemberId=123456 is 
+-- in the query.
