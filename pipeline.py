@@ -3,7 +3,7 @@ from distutils.version import StrictVersion
 import hashlib
 import os
 import seesaw
-from seesaw.config import NumberConfigValue, StringConfigValue
+from seesaw.config import NumberConfigValue, realize
 from seesaw.externalprocess import WgetDownload
 from seesaw.item import ItemInterpolation, ItemValue
 from seesaw.pipeline import Pipeline
@@ -52,7 +52,7 @@ if not WGET_LUA:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20140126.01"
+VERSION = "20140216.01"
 USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36'
 TRACKER_ID = 'bebo'
 TRACKER_HOST = 'tracker.archiveteam.org'
@@ -71,12 +71,13 @@ class CheckIP(SimpleTask):
 
     def process(self, item):
         # NEW for 2014! Check if we are behind firewall/proxy
-        ip_str = socket.gethostbyname('bebo.com')
+        ip_str = socket.gethostbyname('www.bebo.com')
         if ip_str != '173.239.67.222':
             item.log_output('Got IP address: %s' % ip_str)
             item.log_output(
                 'Are you behind a firewall/proxy? That is a big no-no!')
-            item.fail()
+            raise Exception(
+                'Are you behind a firewall/proxy? That is a big no-no!')
 
         # Check only occasionally
         if self._counter <= 0:
@@ -126,8 +127,9 @@ def get_hash(filename):
         return hashlib.sha1(in_file.read()).hexdigest()
 
 
-PIPELINE_SHA1 = get_hash(__file__)
-BEBO_SHA1 = get_hash(os.path.join(os.path.dirname(__file__)), 'bebp.lua')
+CWD = os.getcwd()
+PIPELINE_SHA1 = get_hash(os.path.join(CWD, 'pipeline.py'))
+BEBO_SHA1 = get_hash(os.path.join(CWD, 'bebo.lua'))
 
 
 def stats_id_function(item):
@@ -143,10 +145,10 @@ class WgetArgs(object):
     def realize(self, item):
         wget_args = [
             WGET_LUA,
-            "-U", ItemInterpolation("%(user_agent)s"),
+            "-U", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.76 Safari/537.36",
             "-nv",
             "-o", ItemInterpolation("%(item_dir)s/wget.log"),
-            "--lua-script", "dogster.lua",
+            "--lua-script", "bebo.lua",
             "--no-check-certificate",
             "--output-document", ItemInterpolation("%(item_dir)s/wget.tmp"),
             "--truncate-output",
@@ -169,15 +171,15 @@ class WgetArgs(object):
         ]
 
         item_name = item['item_name']
-        item_type, item_data = item_name.split(':', 1)
+        start, end = item_name.split(':', 1)
+        start = int(start)
+        end = int(end)
 
-        item['item_type'] = item_type
-        item['item_data'] = item_data
+        assert start <= end
 
-        # TODO: do stuff here
-        # I'm thinking of doing ranges of bebo profile ids since
-        # the ids are so large
-        raise Exception('Unknown item_type')
+        for profile_id in range(start, end + 1):
+            wget_args.append('http://archive.bebo.com/Profile.jsp?MemberId=%s' % profile_id)
+            wget_args.append('http://archive.bebo.com/Wall.jsp?MemberId=%s' % profile_id)
 
         if 'bind_address' in globals():
             wget_args.extend(['--bind-address', globals()['bind_address']])
@@ -186,7 +188,7 @@ class WgetArgs(object):
                 globals()['bind_address']))
             print('')
 
-        return wget_args
+        return realize(wget_args, item)
 
 
 downloader = globals()['downloader']  # quiet the code checker
@@ -203,9 +205,9 @@ project = Project(
     <h2>Bebo <span class="links">
         <a href="http://archive.bebo.com/">Website</a> &middot;
         <a href="http://%s/%s/">Leaderboard</a></span></h2>
-    <p><b>Bebo</b> grew up.</p>
+    <p><!--<b>Bebo</b> grew up--></p>
     """ % (TRACKER_HOST, TRACKER_ID)
-    , utc_deadline=datetime.datetime(2014, 01, 03, 00, 00, 1)
+    ,
 )
 
 pipeline = Pipeline(
@@ -217,8 +219,7 @@ pipeline = Pipeline(
         max_tries=5,
         accept_on_exit_code=[0, 8],
         env={
-            'item_type': ItemValue("item_type"),
-            'item_data': ItemValue("item_data"),
+            'item_name': ItemValue("item_name"),
         }
     ),
     PrepareStatsForTracker(
