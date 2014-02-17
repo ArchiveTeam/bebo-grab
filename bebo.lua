@@ -38,6 +38,18 @@ for id in range(tonumber(start_id_str), tonumber(end_id_str)) do
 end
 
 
+read_file = function(file)
+  if file then
+    local f = io.open(file)
+    local data = f:read("*all")
+    f:close()
+    return data or ""
+  else
+    return ""
+  end
+end
+
+
 wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_parsed, iri, verdict, reason)
   -- io.stdout:write('url '.. urlpos['url']['url'] .. " " ..tostring(verdict).."\n")
 
@@ -82,4 +94,36 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
 
   return wget.actions.NOTHING
+end
+
+
+wget.callbacks.get_urls = function(file, url, is_css, iri)
+  local urls = {}
+
+  if string.match(url, "Profile%.jsp%?MemberId=[0-9]+$") then
+    local html = read_file(file)
+
+    if not string.match(html, 'html') then
+      return urls
+    end
+
+    if string.match(html, 'notfound">') then
+      return urls
+    end
+
+    local profile_id = string.match(url, "Profile%.jsp%?MemberId=([0-9]+)$")
+
+    if profile_id then
+      io.stdout:write("\nFound Profile "..profile_id.."\n")
+      io.stdout:flush()
+
+      local new_url = 'http://archive.bebo.com/Wall.jsp?MemberId='..profile_id
+
+      table.insert(urls, {
+        url=new_url
+      })
+    end
+  end
+
+  return urls
 end
