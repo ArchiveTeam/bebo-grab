@@ -103,7 +103,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   if string.match(url, "Profile%.jsp%?MemberId=[0-9]+$") then
     local html = read_file(file)
 
-    if not string.match(html, 'html') then
+    if not string.match(html, 'html xmlns') then
       return urls
     end
 
@@ -114,8 +114,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     local profile_id = string.match(url, "Profile%.jsp%?MemberId=([0-9]+)$")
 
     if profile_id then
-      io.stdout:write("\nFound Profile "..profile_id.."\n")
-      io.stdout:flush()
+--      io.stdout:write("\nFound Profile "..profile_id.."\n")
+--      io.stdout:flush()
 
       local new_url = 'http://archive.bebo.com/Wall.jsp?MemberId='..profile_id
 
