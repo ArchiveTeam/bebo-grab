@@ -12,6 +12,7 @@ from seesaw.task import SimpleTask, LimitConcurrent
 from seesaw.tracker import (GetItemFromTracker, SendDoneToTracker,
     PrepareStatsForTracker, UploadWithTracker)
 from seesaw.util import find_executable
+import random
 import shutil
 import socket
 import sys
@@ -52,8 +53,26 @@ if not WGET_LUA:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20140218.02"
-USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36'
+VERSION = "20140228.00"
+USER_AGENTS = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9) AppleWebKit/537.71 (KHTML, like Gecko) Version/7.0 Safari/537.71',
+'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:25.0) Gecko/20100101 Firefox/25.0',
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36',
+'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36',
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36',
+'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36',
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:25.0) Gecko/20100101 Firefox/25.0',
+'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36',
+'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36',
+'Mozilla/5.0 (Windows NT 6.1; rv:25.0) Gecko/20100101 Firefox/25.0',
+'Mozilla/5.0 (Windows NT 5.1; rv:25.0) Gecko/20100101 Firefox/25.0',
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36',
+'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36',
+'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36',
+'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36',
+'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0',
+'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36',
+'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)')
+
 TRACKER_ID = 'bebo'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
@@ -84,6 +103,14 @@ class CheckIP(SimpleTask):
             self._counter = 10
         else:
             self._counter -= 1
+
+
+class SelectUserAgent(SimpleTask):
+    def __init__(self):
+        SimpleTask.__init__(self, 'SelectUserAgent')
+
+    def process(self, item):
+        item["user_agent"] = random.choice(USER_AGENTS)
 
 
 class PrepareDirectories(SimpleTask):
@@ -145,7 +172,7 @@ class WgetArgs(object):
     def realize(self, item):
         wget_args = [
             WGET_LUA,
-            "-U", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.76 Safari/537.36",
+            "-U", ItemInterpolation("%(user_agent)s"),
             "-nv",
             "-o", ItemInterpolation("%(item_dir)s/wget.log"),
             "--lua-script", "bebo.lua",
@@ -213,6 +240,7 @@ pipeline = Pipeline(
     GetItemFromTracker("http://%s/%s" % (TRACKER_HOST, TRACKER_ID), downloader,
         VERSION),
     PrepareDirectories(warc_prefix="bebo"),
+    SelectUserAgent(),
     WgetDownload(
         WgetArgs(),
         max_tries=5,
