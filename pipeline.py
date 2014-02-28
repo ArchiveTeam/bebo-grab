@@ -2,6 +2,8 @@ import datetime
 from distutils.version import StrictVersion
 import hashlib
 import os
+import random
+import re
 import seesaw
 from seesaw.config import NumberConfigValue, realize
 from seesaw.externalprocess import WgetDownload
@@ -12,7 +14,6 @@ from seesaw.task import SimpleTask, LimitConcurrent
 from seesaw.tracker import (GetItemFromTracker, SendDoneToTracker,
     PrepareStatsForTracker, UploadWithTracker)
 from seesaw.util import find_executable
-import random
 import shutil
 import socket
 import sys
@@ -110,7 +111,15 @@ class SelectUserAgent(SimpleTask):
         SimpleTask.__init__(self, 'SelectUserAgent')
 
     def process(self, item):
-        item["user_agent"] = random.choice(USER_AGENTS)
+        item["user_agent"] = self.mutate_user_agent(random.choice(USER_AGENTS))
+
+    def mutate_user_agent(self, string):
+        def repl_func(match):
+            int_val = int(match.group(1))
+            int_val = random.randint(int_val - 4, int_val + 1)
+            return str(int_val) + '.'
+
+        return re.sub(r'([1-9][0-9])\.', repl_func, string)
 
 
 class PrepareDirectories(SimpleTask):
