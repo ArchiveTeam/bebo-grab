@@ -76,6 +76,15 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   io.stdout:write(url_count .. "=" .. url["url"] .. ".  \r")
   io.stdout:flush()
   url_count = url_count + 1
+  
+  local status_code = http_stat["statcode"]
+
+  if status_code == 403 then
+    io.stdout:write("\Bebo angered!\n")
+    io.stdout:flush()
+
+    return wget.actions.ABORT
+  end
 
   -- We're okay; sleep a bit (if we have to) and continue
   local sleep_time = 0.1 * (math.random(75, 125) / 100.0)
