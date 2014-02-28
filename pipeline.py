@@ -12,6 +12,7 @@ from seesaw.task import SimpleTask, LimitConcurrent
 from seesaw.tracker import (GetItemFromTracker, SendDoneToTracker,
     PrepareStatsForTracker, UploadWithTracker)
 from seesaw.util import find_executable
+import random
 import shutil
 import socket
 import sys
@@ -239,6 +240,7 @@ pipeline = Pipeline(
     GetItemFromTracker("http://%s/%s" % (TRACKER_HOST, TRACKER_ID), downloader,
         VERSION),
     PrepareDirectories(warc_prefix="bebo"),
+    SelectUserAgent(),
     WgetDownload(
         WgetArgs(),
         max_tries=5,
